@@ -1,11 +1,84 @@
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <title>Main page</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Emergency incident visualization</title>
+  </head>
+  <body>
+    <div style="border: solid 1px black; width: 50%;">
+        <h4>Number of fire incidents per station</h4>
+        <div id="map"></div>
+    </div>
+    
+    <script src="https://d3js.org/d3.v6.js"></script>
+    <script>
+      var margin = { top: 100, right: 100, bottom: 100, left: 50 },
+        width = 500 - margin.left - margin.right,
+        height = 350 - margin.top - margin.bottom;
 
-    <body>
-        <h1>Main page</h1>
-    </body>
+      var svg = d3
+        .select("#map")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      d3.csv("data/df-opendata-2020-to-2022-with-stn-area.csv").then((data) => {
+
+        const incidentPerStation = {}
+
+        for(let i = 0; i < data.length; i++) {
+          const station = data[i]['Station Name']
+          if(incidentPerStation[station]) {
+            incidentPerStation[station] += 1
+          } else {
+            incidentPerStation[station] = 1
+          }
+        }
+
+        console.log(incidentPerStation);
+
+        const maxIncidentPerStation = Math.max(...Object.values(incidentPerStation))
+
+        var x = d3
+          .scaleBand()
+          .range([0, width])
+          .domain(
+            data.map(function (d) {
+              return d["Station Name"];
+            })
+          )
+          .padding(0.2);
+        svg
+          .append("g")
+          .attr("transform", "translate(0," + height + ")")
+          .call(d3.axisBottom(x))
+          .selectAll("text")
+          .attr("transform", "translate(-10,0)rotate(-45)")
+          .style("text-anchor", "end");
+
+        var y = d3.scaleLinear().domain([0, 7000]).range([height, 0]);
+        svg.append("g").call(d3.axisLeft(y));
+
+        svg
+          .selectAll("mybar")
+          .data(data)
+          .enter()
+          .append("rect")
+          .attr("x", function (d) {
+            return x(d["Station Name"]);
+          })
+          .attr("y", function (d) {
+            return y(incidentPerStation[d["Station Name"]]);
+          })
+          .attr("width", x.bandwidth())
+          .attr("height", function (d) {
+            return height - y(incidentPerStation[d["Station Name"]]);
+          })
+          .attr("fill", "#69b3a2");
+      });
+    </script>
+  </body>
 </html>
