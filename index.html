@@ -6,29 +6,55 @@
     <title>Emergency incident visualization</title>
   </head>
   <body>
-    <input type="checkbox" id="showfire" name="showfire" value="show-fire" checked="true">
+    <input
+      type="checkbox"
+      id="showfire"
+      name="showfire"
+      value="show-fire"
+      checked="true"
+    />
     <label for="showfire">Fire incidents</label>
-    <input type="checkbox" id="showambulance" name="ambulance" value="show-ambulance"  checked="true">
+    <input
+      type="checkbox"
+      id="showambulance"
+      name="ambulance"
+      value="show-ambulance"
+      checked="true"
+    />
     <label for="showambulance">Ambulance incidents</label>
     <label for="startDate">Start:</label>
-    <input type="date" id="startDate" min="2020-01-01" max="2022-12-31" value="2020-01-01">
+    <input
+      type="date"
+      id="startDate"
+      min="2020-01-01"
+      max="2022-12-31"
+      value="2020-01-01"
+    />
     <label for="endDate">End:</label>
-    <input type="date" id="endDate" min="2020-01-01" max="2022-12-31" value="2022-12-31">
+    <input
+      type="date"
+      id="endDate"
+      min="2020-01-01"
+      max="2022-12-31"
+      value="2022-12-31"
+    />
     <label for="ambulanceType">Ambulance incident type:</label>
     <select id="ambulanceType">
-        <option value="C">Serious not life threatening immediate</option>
-        <option value="D">Life threatening other than cardiac/respiratory arrest</option>
-        <option value="E">Life threatening cardiac or respiratory arrest</option>
-        <option value="B">Serious not life threatening urgent</option>
-        <option value="A">Non serious or life threatening</option>
-        <option value="O">Minor illness or injury</option>
-        <option value="ALL" selected>All</option>
+      <option value="C">Serious not life threatening immediate</option>
+      <option value="D">
+        Life threatening other than cardiac/respiratory arrest
+      </option>
+      <option value="E">Life threatening cardiac or respiratory arrest</option>
+      <option value="B">Serious not life threatening urgent</option>
+      <option value="A">Non serious or life threatening</option>
+      <option value="O">Minor illness or injury</option>
+      <option value="ALL" selected>All</option>
     </select>
     <label for="fireType">Fire incident type:</label>
     <select id="fireType">
-        <option value="Fire">Fire</option>
-        <option value="Non-fire excl. Ambulance">Non-fire excl. Ambulance</option>
-        <option value="ALL" selected>All</option>
+      <option value="Fire">Fire</option>
+      <option value="Non-fire excl. Ambulance">Non-fire excl. Ambulance</option>
+      <option value="ALL" selected>All</option>
     </select>
 
     <div style="width: 100%; display: table">
@@ -40,7 +66,10 @@
           <div id="map-f"></div>
         </div>
         <div style="display: table-cell; border: solid 1px black; width: 50%">
-          <h4 style="text-align: center">Map visualization</h4>
+          <h4 style="text-align: center">Incident timeline visualization
+             &#40;<span style="color:red;">red</span> - fire incident, 
+            <span style="color:blue;">blue</span> - ambulance incident&#41</h4>
+          <div id="time-viz" style="text-align: center"></div>
         </div>
       </div>
     </div>
@@ -55,7 +84,7 @@
         </div>
         <div style="display: table-cell; border: solid 1px black; width: 50%">
           <h4 style="text-align: center">
-            Average time to respond vs number of incidents per station
+            Average time to arrive vs number of incidents per station
           </h4>
           <div id="map-avg"></div>
         </div>
@@ -63,6 +92,7 @@
     </div>
 
     <script src="https://d3js.org/d3.v6.js"></script>
+
     <script>
       var margin = { top: 55, right: 25, bottom: 100, left: 75 },
         width = 725 - margin.left - margin.right,
@@ -84,7 +114,6 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-      
       var svgavg = d3
         .select("#map-avg")
         .append("svg")
@@ -93,51 +122,56 @@
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+      var svgtimeline = d3
+        .select("#time-viz")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g");
+
       const isValidNumber = (value) => {
-        return typeof value === 'number' && !isNaN(value) && value !== null;
+        return typeof value === "number" && !isNaN(value) && value !== null;
       };
 
       const timeDifferenceInMinutes = (time1, time2) => {
         const parseTime = (time) => {
-          const [hours, minutes, seconds] = time.split(':').map(Number);
+          const [hours, minutes, seconds] = time.split(":").map(Number);
           return new Date(0, 0, 0, hours, minutes, seconds);
         };
 
         const date1 = parseTime(time1);
         const date2 = parseTime(time2);
 
-        if(date1 < date2){
+        if (date1 < date2) {
           date1.setDate(date1.getDate() + 1);
         }
-          
+
         const differenceInMilliseconds = Math.abs(date2 - date1);
 
-        if(!isValidNumber(differenceInMilliseconds)) return null;
+        if (!isValidNumber(differenceInMilliseconds)) return null;
 
-
-        const totalMinutesDiff = Math.floor(differenceInMilliseconds / 60000);
+        const totalMinutesDiff = Math.round(differenceInMilliseconds / 60000);
 
         return totalMinutesDiff;
       };
 
       const convertDescriptionFire = (desc) => {
-          if (desc.includes("F/")) {
-            return "Fire";
-          } else {
-            return "Non-fire excl. Ambulance";
-          }
+        if (desc.includes("F/")) {
+          return "Fire";
+        } else {
+          return "Non-fire excl. Ambulance";
+        }
       };
 
       const getAvgTimeToRespondVsNumberOfIncidents = (data, filter, isFire) => {
         let avgTimeToRespondVsNumberOfIncidents = {};
 
         for (let i = 0; i < data.length; i++) {
-          
-          if(isFire && filter && filter !== "ALL"){
-            if(convertDescriptionFire(data[i].Description) !== filter) continue;
-          }
-          else if(filter && filter !== "ALL"){
-            if(data[i].criticality !== filter) continue;
+          if (isFire && filter && filter !== "ALL") {
+            if (convertDescriptionFire(data[i].Description) !== filter)
+              continue;
+          } else if (filter && filter !== "ALL") {
+            if (data[i].criticality !== filter) continue;
           }
 
           if (!avgTimeToRespondVsNumberOfIncidents[data[i]["Station Name"]]) {
@@ -146,10 +180,13 @@
               numberOfIncidents: 0,
             };
           }
-          
-          const incidentTime = timeDifferenceInMinutes(data[i]["IA"], data[i]["ORD"]);
-          
-          if(!incidentTime) continue;
+
+          const incidentTime = timeDifferenceInMinutes(
+            data[i]["IA"],
+            data[i]["ORD"]
+          );
+
+          if (!incidentTime) continue;
 
           avgTimeToRespondVsNumberOfIncidents[data[i]["Station Name"]][
             "avgTimeToRespond"
@@ -159,7 +196,7 @@
           ] += 1;
         }
 
-        const result =  [];
+        const result = [];
 
         for (const station in avgTimeToRespondVsNumberOfIncidents) {
           avgTimeToRespondVsNumberOfIncidents[station]["avgTimeToRespond"] /=
@@ -167,14 +204,12 @@
 
           result.push({
             station: station,
-            avgTimeToRespond: avgTimeToRespondVsNumberOfIncidents[station][
-              "avgTimeToRespond"
-            ],
-            numberOfIncidents: avgTimeToRespondVsNumberOfIncidents[station][
-              "numberOfIncidents"
-            ],
-            isFire: isFire
-          })
+            avgTimeToRespond:
+              avgTimeToRespondVsNumberOfIncidents[station]["avgTimeToRespond"],
+            numberOfIncidents:
+              avgTimeToRespondVsNumberOfIncidents[station]["numberOfIncidents"],
+            isFire: isFire,
+          });
         }
 
         return result;
@@ -454,116 +489,146 @@
         }
       });
 
-      let showFireValue = true;
-      let showAmbulanceValue = true;
-      let startDateValue = new Date(-8640000000000000);
-      let endDateValue = new Date(8640000000000000);
-      let fireFilterValue = "ALL";
-      let ambulanceFilterValue = "ALL";
-
       function isValidDate(d) {
         return d instanceof Date && !isNaN(d);
       }
 
-
-      d3.csv("data/df-opendata-2020-to-2022-with-stn-area.csv").then((dataFire) => {
-         d3.csv("data/da-opendata-2020-to-2022-with-stn-area.csv").then((dataAmbulance) => {
-            const createViz = () => {
+      d3.csv("data/df-opendata-2020-to-2022-with-stn-area.csv").then(
+        (dataFire) => {
+          d3.csv("data/da-opendata-2020-to-2022-with-stn-area.csv").then(
+            (dataAmbulance) => {
+              const createViz = () => {
                 svgavg.selectAll("*").remove();
-                showFireValue = document.getElementById("showfire").checked;
-                showAmbulanceValue = document.getElementById("showambulance").checked;
-                startDateValue = new Date(document.getElementById("startDate").value);
-                fireFilterValue = document.getElementById("fireType").value;
-                ambulanceFilterValue = document.getElementById("ambulanceType").value;
+                let showFireValue = document.getElementById("showfire").checked;
+                let showAmbulanceValue =
+                  document.getElementById("showambulance").checked;
+                let startDateValue = new Date(
+                  document.getElementById("startDate").value
+                );
+                let fireFilterValue = document.getElementById("fireType").value;
+                let ambulanceFilterValue =
+                  document.getElementById("ambulanceType").value;
 
-                if(!isValidDate(startDateValue)){
+                if (!isValidDate(startDateValue)) {
                   startDateValue = new Date(-8640000000000000);
                 }
-                endDateValue = new Date(document.getElementById("endDate").value);
+                endDateValue = new Date(
+                  document.getElementById("endDate").value
+                );
 
-                if(!isValidDate(endDateValue)){
+                if (!isValidDate(endDateValue)) {
                   endDateValue = new Date(8640000000000000);
                 }
 
                 const filterByDate = (data, startDate, endDate) => {
-                  return data.filter(x => {
-                    const parts = x.Date.split('/');
+                  return data.filter((x) => {
+                    const parts = x.Date.split("/");
                     const date = new Date(parts[2], parts[1] - 1, parts[0]);
                     return date >= startDate && date <= endDate;
                   });
-                }
+                };
 
-                const avgTimeToRespondVsNumberOfIncidentsFire = 
-                        getAvgTimeToRespondVsNumberOfIncidents(filterByDate(
-                          dataFire, startDateValue, endDateValue), fireFilterValue, true);
+                const avgTimeToRespondVsNumberOfIncidentsFire =
+                  getAvgTimeToRespondVsNumberOfIncidents(
+                    filterByDate(dataFire, startDateValue, endDateValue),
+                    fireFilterValue,
+                    true
+                  );
 
-                const avgTimeToRespondVsNumberOfIncidentsAmbulance = 
-                        getAvgTimeToRespondVsNumberOfIncidents(filterByDate(dataAmbulance, 
-                        startDateValue, endDateValue), ambulanceFilterValue, false);
-
+                const avgTimeToRespondVsNumberOfIncidentsAmbulance =
+                  getAvgTimeToRespondVsNumberOfIncidents(
+                    filterByDate(dataAmbulance, startDateValue, endDateValue),
+                    ambulanceFilterValue,
+                    false
+                  );
 
                 const avgTimeToRespondAll = [];
 
-                if(showFireValue){
-                  avgTimeToRespondAll.push(...avgTimeToRespondVsNumberOfIncidentsFire);
+                if (showFireValue) {
+                  avgTimeToRespondAll.push(
+                    ...avgTimeToRespondVsNumberOfIncidentsFire
+                  );
                 }
 
-                if(showAmbulanceValue){
-                  avgTimeToRespondAll.push(...avgTimeToRespondVsNumberOfIncidentsAmbulance);
+                if (showAmbulanceValue) {
+                  avgTimeToRespondAll.push(
+                    ...avgTimeToRespondVsNumberOfIncidentsAmbulance
+                  );
                 }
 
-                var x = d3.scaleLinear()
-                     .domain([0, d3.extent(avgTimeToRespondAll, 
-                            function(d) { return +d.numberOfIncidents })[1]])
-                     .range([0, width]);
+                var x = d3
+                  .scaleLinear()
+                  .domain([
+                    0,
+                    d3.extent(avgTimeToRespondAll, function (d) {
+                      return +d.numberOfIncidents;
+                    })[1],
+                  ])
+                  .range([0, width]);
 
-                svgavg.append("g")
-                    .attr("transform", "translate(0," + (height + margin.bottom - 50) + ")")
-                    .call(d3.axisBottom(x));
+                svgavg
+                  .append("g")
+                  .attr(
+                    "transform",
+                    "translate(0," + (height + margin.bottom - 50) + ")"
+                  )
+                  .call(d3.axisBottom(x));
 
-                var y = d3.scaleLinear()
-                    .domain([0, d3.extent(avgTimeToRespondAll, 
-                          function(d) { return +d.avgTimeToRespond; })[1]])
-                    .range([height + margin.bottom -50, 0]);
+                var y = d3
+                  .scaleLinear()
+                  .domain([
+                    0,
+                    d3.extent(avgTimeToRespondAll, function (d) {
+                      return +d.avgTimeToRespond;
+                    })[1],
+                  ])
+                  .range([height + margin.bottom - 50, 0]);
 
-                svgavg.append("g")
-                    .call(d3.axisLeft(y));
+                svgavg.append("g").call(d3.axisLeft(y));
 
-                svgavg.append('g')
-                    .selectAll("dot")
-                    .data(avgTimeToRespondAll)
-                    .enter()
-                    .append("circle")
-                    .attr("cx", (d) => x(+d.numberOfIncidents))
-                    .attr("cy", (d) => y(+d.avgTimeToRespond))
-                    .attr("r", 4)
-                    .style("fill", (d) => d.isFire ? "#e41a1c" : "#377eb8")
-                    .append("title")
-                    .text(d=>d.station + (d.isFire ? " (Fire incidents)" : " (Ambulance incidents)"));
+                svgavg
+                  .append("g")
+                  .selectAll("dot")
+                  .data(avgTimeToRespondAll)
+                  .enter()
+                  .append("circle")
+                  .attr("cx", (d) => x(+d.numberOfIncidents))
+                  .attr("cy", (d) => y(+d.avgTimeToRespond))
+                  .attr("r", 4)
+                  .style("fill", (d) => (d.isFire ? "#e41a1c" : "#377eb8"))
+                  .append("title")
+                  .text(
+                    (d) =>
+                      d.station +
+                      (d.isFire
+                        ? " (Fire incidents)"
+                        : " (Ambulance incidents)")
+                  );
 
-                svgavg.append("text")
-                    .attr("text-anchor", "middle")
-                    .attr("x", width / 2)
-                    .attr("y", height + margin.bottom - 10)
-                    .text("Number of incidents");
+                svgavg
+                  .append("text")
+                  .attr("text-anchor", "middle")
+                  .attr("x", width / 2)
+                  .attr("y", height + margin.bottom - 10)
+                  .text("Number of incidents");
 
-    
-                svgavg.append("text")
-                    .attr("text-anchor", "middle")
-                    .attr("y", -margin.left + 30)
-                    .attr("x", -height / 2)
-                    .attr("transform", "rotate(-90)")
-                    .text("Mean time to arrive (minutes)");
-                
+                svgavg
+                  .append("text")
+                  .attr("text-anchor", "middle")
+                  .attr("y", -margin.left + 30)
+                  .attr("x", -height / 2)
+                  .attr("transform", "rotate(-90)")
+                  .text("Mean time to arrive (minutes)");
+
                 const isFireValues = [false, true];
 
                 for (let i = 0; i < isFireValues.length; i++) {
                   const key = isFireValues[i];
-                  const colorVal = isFireValues[i]? "#e41a1c" : "#377eb8";
+                  const colorVal = isFireValues[i] ? "#e41a1c" : "#377eb8";
                   svgavg
                     .append("circle")
                     .attr("cx", width - 60)
-                    .attr("cy",  -45 + i * 15)
+                    .attr("cy", -45 + i * 15)
                     .attr("r", 6)
                     .attr("stroke", colorVal)
                     .attr("stroke-width", 2)
@@ -577,19 +642,278 @@
                     .style("font-size", "14px")
                     .attr("alignment-baseline", "middle");
                 }
+              };
+
+              createViz();
+
+              document
+                .getElementById("showfire")
+                .addEventListener("input", createViz);
+              document
+                .getElementById("showambulance")
+                .addEventListener("input", createViz);
+              document
+                .getElementById("startDate")
+                .addEventListener("input", createViz);
+              document
+                .getElementById("endDate")
+                .addEventListener("input", createViz);
+              document
+                .getElementById("fireType")
+                .addEventListener("input", createViz);
+              document
+                .getElementById("ambulanceType")
+                .addEventListener("input", createViz);
             }
+          );
+        }
+      );
 
-            
-            createViz();
+      const generateTimeLine = (datapoint, isFire) => {
+        let currentTime = 0;
 
-            document.getElementById("showfire").addEventListener("input", createViz);
-            document.getElementById("showambulance").addEventListener("input", createViz);
-            document.getElementById("startDate").addEventListener("input", createViz);
-            document.getElementById("endDate").addEventListener("input", createViz);
-            document.getElementById("fireType").addEventListener("input", createViz);
-            document.getElementById("ambulanceType").addEventListener("input", createViz);
-                
-         });
+        const labelsAmb = ["TOC", "ORD", "MOB", "IA", "LS", "AH", "MAV"];
+        const labelsFire = ["TOC", "ORD", "MOB", "IA", "MAV", "CD"];
+
+        const labels = isFire ? labelsFire : labelsAmb;
+
+        let timeline = [{ label: "TOC", time: 0 }];
+
+        for (i = 0; i < labels.length - 1; i++) {
+          const time = timeDifferenceInMinutes(
+            datapoint[labels[i + 1]],
+            datapoint[labels[i]]
+          );
+          if (time == null) {
+            return null;
+          }
+
+          currentTime += time;
+          timeline.push({
+            label: labels[i + 1],
+            time: currentTime,
+          });
+        }
+
+        return timeline;
+      };
+
+      d3.csv("data/df-opendata-2020-to-2022-with-stn-area.csv").then(
+        (dataFire) => {
+          d3.csv("data/da-opendata-2020-to-2022-with-stn-area.csv").then(
+            (dataAmbulance) => {
+              const data = [
+                { label: "TOC", y: 0, full: "Time of call" },
+                { label: "ORD", y: 35, full: "Ordered to the scene" },
+                { label: "MOB", y: 70, full: "Vehicle mobile" },
+                { label: "IA", y: 105, full: "Incident arrival" },
+                { label: "LS", y: 140, full: "Left scene (ambulance only)" },
+                {
+                  label: "AH",
+                  y: 175,
+                  full: "Arrived at hospital (ambulance only)",
+                },
+                { label: "MAV", y: 210, full: "Mobile and available" },
+                { label: "CD", y: 245, full: "Closing down" },
+              ];
+
+              const labelPositions = {
+                TOC: 0,
+                ORD: 35,
+                MOB: 70,
+                IA: 105,
+                LS: 140,
+                AH: 175,
+                MAV: 210,
+                CD: 245,
+              };
+
+              svgtimeline
+                .selectAll("line")
+                .data(data)
+                .enter()
+                .append("line")
+                .attr("x1", margin.left)
+                .attr("x2", width + margin.right + margin.left - 30)
+                .attr("y1", (d) => d.y + 10)
+                .attr("y2", (d) => d.y + 10)
+                .attr("stroke", "#ccc");
+
+              svgtimeline
+                .selectAll("text")
+                .data(data)
+                .enter()
+                .append("text")
+                .attr("x", 30)
+                .attr("y", (d) => d.y + 10)
+                .text((d) => d.label)
+                .append("title")
+                .text((d) => d.full);
+
+              const minTime = 0;
+              const maxTime = 120;
+
+              const startCoordinate = margin.left;
+              const endCoordinate = margin.left + width + margin.right - 30;
+
+              const numberOfSteps = 10;
+
+              const stepSize =
+                (endCoordinate - startCoordinate) / numberOfSteps;
+
+              const pointsData = [];
+
+              for (let i = 0; i <= numberOfSteps; i++) {
+                pointsData.push({
+                  x: startCoordinate + i * stepSize,
+                  y: 275,
+                  label:
+                    minTime +
+                    (i * (maxTime - minTime)) / numberOfSteps +
+                    " min",
+                });
+              }
+
+              const line = d3
+                .line()
+                .x((d) => d.x)
+                .y((d) => d.y);
+
+              svgtimeline
+                .append("path")
+                .datum(pointsData)
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "orange")
+                .attr("stroke-width", 2);
+
+              svgtimeline
+                .selectAll("circle")
+                .data(pointsData)
+                .enter()
+                .append("circle")
+                .attr("cx", (d) => d.x)
+                .attr("cy", (d) => d.y)
+                .attr("r", 3)
+                .style("fill", "green");
+
+              for (let i = 0; i < pointsData.length; i++) {
+                svgtimeline
+                  .append("text")
+                  .attr("x", pointsData[i].x)
+                  .attr("y", pointsData[i].y + 15)
+                  .attr("text-anchor", "middle")
+                  .text(pointsData[i].label)
+                  .style("font-size", "12px")
+                  .style("fill", "#333");
+              }
+
+              const timeLineDatasetArray = [];
+
+              for (let i = 0; i < dataFire.length; i++) {
+                const timeLine = generateTimeLine(dataFire[i], true);
+                if (timeLine && timeLine[timeLine.length - 1].time <= maxTime) {
+                  timeLineDatasetArray.push({
+                    datapoint: dataFire[i],
+                    isFire: true,
+                    timeLine: timeLine,
+                  });
+                }
+              }
+
+              for (let i = 0; i < dataAmbulance.length; i++) {
+                const timeLine = generateTimeLine(dataAmbulance[i], false);
+                if (timeLine && timeLine[timeLine.length - 1].time <= maxTime) {
+                  timeLineDatasetArray.push({
+                    datapoint: dataAmbulance[i],
+                    isFire: false,
+                    timeLine: timeLine,
+                  });
+                }
+              }
+
+              function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [array[i], array[j]] = [array[j], array[i]];
+                }
+              }
+
+              shuffleArray(timeLineDatasetArray);
+
+              const performTimeLineViz = (datapoint) => {
+                const testTimeLine = datapoint.timeLine;
+                const isFire = datapoint.isFire;
+                const color = isFire ? "#e41a1c" : "#377eb8";
+
+                const point = svgtimeline
+                  .append("circle")
+                  .attr("r", 6)
+                  .style("fill", color)
+                  .attr("opacity", 0.5)
+                  .attr("cx", -100000)
+                  .attr("cy", -100000);
+
+                const pointMove = {
+                  d3Point: point,
+                  indexInTimeline: -1,
+                  timeline: testTimeLine,
+                  getPosition: function () {
+                    if (this.indexInTimeline >= this.timeline.length) {
+                      return null;
+                    }
+
+                    const timeLineItem = this.timeline[this.indexInTimeline];
+                    const linePosition = labelPositions[timeLineItem.label];
+
+                    return {
+                      x:
+                        startCoordinate +
+                        (this.timeline[this.indexInTimeline].time / maxTime) *
+                          (endCoordinate - startCoordinate),
+                      y: linePosition + 10,
+                    };
+                  },
+                  move: function () {
+                    if (!this.timeline) return false;
+
+                    this.indexInTimeline += 1;
+                    const newPosition = this.getPosition();
+
+                    if (newPosition == null) {
+                      return false;
+                    }
+
+                    point
+                      .transition()
+                      .duration(1000)
+                      .attr("cx", newPosition.x)
+                      .attr("cy", newPosition.y);
+
+                    return true;
+                  },
+                };
+
+                const intervalId = setInterval(() => {
+                  const moved = pointMove.move();
+                  if (!moved) {
+                    clearInterval(intervalId);
+                  }
+                }, 1000);
+              };
+
+              let timelineVizIndex = 0;
+
+              const performVizStep = (timelineVizIndex) => {
+                performTimeLineViz(timeLineDatasetArray[timelineVizIndex]);
+              };
+
+              const intervalId = setInterval(() => {
+                performVizStep(timelineVizIndex);
+                timelineVizIndex += 1;
+              }, 1000);
+            }
+          );
         }
       );
     </script>
