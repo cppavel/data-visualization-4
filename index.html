@@ -149,7 +149,6 @@
           
           const incidentTime = timeDifferenceInMinutes(data[i]["IA"], data[i]["ORD"]);
           
-          console.log(incidentTime, data[i]["IA"], data[i]["ORD"], data[i]["Station Name"])
           if(!incidentTime) continue;
 
           avgTimeToRespondVsNumberOfIncidents[data[i]["Station Name"]][
